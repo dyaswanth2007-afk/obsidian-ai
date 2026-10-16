@@ -7,7 +7,7 @@ import { GoogleGenAI } from "@google/genai";
 dotenv.config();
 
 const app = express();
-const PORT = 5000;
+const PORT = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.json({ limit: "2mb" }));
@@ -16,7 +16,7 @@ const ai = process.env.GEMINI_API_KEY
   ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
   : null;
 
-// Temporary memory only: no website files or chat history are saved.
+// Temporary memory only. Generated websites are not persisted.
 let currentWebsite = null;
 
 app.get("/", (req, res) => {
@@ -34,7 +34,7 @@ function extractWebsiteFiles(responseText) {
 
   let text = responseText.trim();
 
-  // Remove Markdown fences if the model unexpectedly includes them.
+  // Remove Markdown code fences if present.
   text = text
     .replace(/^```(?:json)?\s*/i, "")
     .replace(/\s*```$/, "")
@@ -61,20 +61,16 @@ function extractWebsiteFiles(responseText) {
     typeof files.css !== "string" ||
     typeof files.js !== "string"
   ) {
-    throw new Error(
-      "Gemini must return html, css and js as strings."
-    );
+    throw new Error("Gemini must return html, css and js as strings.");
   }
 
   return files;
 }
 
-// Generate a website or update the existing website.
+// Generate a new website or update the existing website.
 async function generateWebsite(prompt) {
   if (!ai) {
-    throw new Error(
-      "Gemini API key is missing. Check your .env file."
-    );
+    throw new Error("Gemini API key is missing. Check your .env file.");
   }
 
   const models = [
@@ -96,23 +92,20 @@ EXISTING WEBSITE:
 ${previousWebsite}
 
 TASK:
-- If no website exists, create a complete new website.
-- If a website exists, update it according to the latest request.
-- Preserve existing sections and features unless the user requests changes.
+- Create a new website if no website exists.
+- Otherwise update the existing website according to the latest request.
+- Preserve existing sections unless the user requests changes.
 - Return the complete updated HTML, CSS and JavaScript.
 
 DESIGN REQUIREMENTS:
-- Create a polished, professional, visually attractive website.
+- Create a polished, professional and attractive website.
 - Use a cohesive color palette and modern typography.
 - Use CSS Grid and Flexbox where appropriate.
 - Style navigation, buttons, links, cards and forms.
-- Add appropriate spacing, shadows, rounded corners and hover effects.
 - Make the website responsive on desktop, tablet and mobile.
-- Avoid default browser styling where custom styling is appropriate.
 - Ensure readable text and good contrast.
-- Keep navigation in normal page flow; do not make it fixed or sticky
-  unless the user explicitly requests it.
-- Do not use React or JSX. Return a standalone HTML website.
+- Do not use React or JSX.
+- Return a standalone HTML website.
 
 OUTPUT REQUIREMENTS:
 Return ONLY a JSON object with exactly these three string properties:
@@ -134,9 +127,7 @@ Return ONLY a JSON object with exactly these three string properties:
   for (const model of models) {
     for (let attempt = 1; attempt <= 2; attempt++) {
       try {
-        console.log(
-          `Trying ${model}, attempt ${attempt}...`
-        );
+        console.log(`Trying ${model}, attempt ${attempt}...`);
 
         const response = await ai.models.generateContent({
           model,
@@ -162,10 +153,10 @@ Return ONLY a JSON object with exactly these three string properties:
         const message = String(error.message || error);
 
         const retryable =
-          /503|502|500|429|overloaded|unavailable|timeout|rate.?limit/i
-            .test(message);
+          /503|502|500|429|overloaded|unavailable|timeout|rate.?limit/i.test(
+            message
+          );
 
-        // Invalid JSON usually means the response was truncated or malformed.
         const invalidJson =
           /invalid or incomplete JSON/i.test(message);
 
@@ -180,12 +171,10 @@ Return ONLY a JSON object with exactly these three string properties:
     }
   }
 
-  throw new Error(
-    lastError?.message || "Website generation failed."
-  );
+  throw new Error(lastError?.message || "Website generation failed.");
 }
 
-// Chat endpoint: create or modify the website.
+// Create or update a website.
 app.post("/api/chat", async (req, res) => {
   try {
     const { prompt } = req.body || {};
@@ -200,14 +189,14 @@ app.post("/api/chat", async (req, res) => {
 
     const updatedWebsite = await generateWebsite(prompt.trim());
 
-    // Replace the current website only after successful generation.
+    // Update memory only after successful generation.
     currentWebsite = updatedWebsite;
 
     res.set("Cache-Control", "no-store");
 
     return res.json({
       message: "Website generated or updated successfully!",
-      previewUrl: `http://localhost:${PORT}/preview`,
+      previewUrl: "/preview",
     });
   } catch (error) {
     console.error("Website generation error:", error);
@@ -218,7 +207,7 @@ app.post("/api/chat", async (req, res) => {
   }
 });
 
-// Return generated source code for the frontend Code view.
+// Return generated source code for the Code view.
 app.get("/api/code", (req, res) => {
   res.set("Cache-Control", "no-store");
 
@@ -244,14 +233,16 @@ app.post("/api/reset", (req, res) => {
   });
 });
 
-// Display the website with its current CSS and JavaScript.
+// Display the generated website.
 app.get("/preview", (req, res) => {
   res.set("Cache-Control", "no-store");
 
   if (!currentWebsite) {
-    return res.status(404).send(
-      "<h2>No website yet</h2><p>Return to Obsidian AI and enter a prompt.</p>"
-    );
+    return res
+      .status(404)
+      .send(
+        "<h2>No website yet</h2><p>Return to Obsidian AI and enter a prompt.</p>"
+      );
   }
 
   let html = currentWebsite.html;
@@ -293,7 +284,7 @@ app.get("/preview", (req, res) => {
   return res.type("html").send(html);
 });
 
-// Serve the current CSS from memory.
+// Serve generated CSS.
 app.get("/preview-files/style.css", (req, res) => {
   res.set("Cache-Control", "no-store");
 
@@ -301,8 +292,6 @@ app.get("/preview-files/style.css", (req, res) => {
     return res.status(404).send("No website generated.");
   }
 
-  // Prevent common navigation elements from being fixed or sticky
-  // unless the generated page uses more specific inline styling.
   const scrollingFix = `
     header,
     nav,
@@ -320,7 +309,7 @@ app.get("/preview-files/style.css", (req, res) => {
     .send(currentWebsite.css + "\n" + scrollingFix);
 });
 
-// Serve the current JavaScript from memory.
+// Serve generated JavaScript.
 app.get("/preview-files/script.js", (req, res) => {
   res.set("Cache-Control", "no-store");
 
@@ -333,6 +322,7 @@ app.get("/preview-files/script.js", (req, res) => {
     .send(currentWebsite.js);
 });
 
-app.listen(PORT, () => {
-  console.log(`Backend running on http://localhost:${PORT}`);
+// Start the server on the hosting platform's assigned port.
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`Backend running on port ${PORT}`);
 });
