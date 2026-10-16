@@ -1,16 +1,104 @@
-# React + Vite
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+# Obsidian AI – AI-Powered Website Builder
 
-Currently, two official plugins are available:
+Obsidian AI is a web application that helps users generate and modify websites using natural-language prompts. It uses Google's Gemini API to generate website code and provides a chat-based interface for iterative editing.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Features
 
-## React Compiler
+- Generate website code from natural-language prompts
+- Edit and refine generated websites through chat
+- Preview generated websites
+- View generated HTML, CSS, and JavaScript source code
+- React-based user interface
+- Node.js and Express.js backend
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Technologies Used
 
-## Expanding the Oxlint configuration
+**Frontend**
+- React.js
+- Vite
+- HTML5
+- CSS3
+- JavaScript
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+**Backend**
+- Node.js
+- Express.js
+
+**API and Tools**
+- Google Gemini API
+- CORS
+- dotenv
+
+## Project Structure
+
+```text
+obsidian-ai/
+├── generated-website/
+│   ├── index.html
+│   ├── style.css
+│   └── script.js
+├── public/
+├── server/
+│   └── server.js
+├── src/
+│   ├── App.jsx
+│   ├── App.css
+│   ├── index.css
+│   └── main.jsx
+├── .gitignore
+├── index.html
+├── package.json
+└── vite.config.js
+```
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js and npm
+- A Google Gemini API key
+
+### Installation
+
+1. Clone the repository:
+
+   ```bash
+   git clone https://github.com/dyaswanth2007-afk/obsidian-ai.git
+   ```
+
+2. Open the project folder:
+
+   ```bash
+   cd obsidian-ai
+   ```
+
+3. Install dependencies:
+
+   ```bash
+   npm install
+   ```
+
+4. Configure your environment variables in a local `.env` file using the variable names expected by the backend. Never commit API keys or secrets to GitHub.
+
+5. Start the frontend using the available npm script:
+
+   ```bash
+   npm run dev
+   ```
+
+6. Start the backend using the command configured for the server in `package.json`.
+
+## Current Implementation
+
+This project is a working prototype for AI-assisted website generation. Generated website data is stored in temporary server memory and is not persisted in a database.
+
+## Author
+
+**Yaswanth Dasari**
+
+- GitHub: [dyaswanth2007-afk](https://github.com/dyaswanth2007-afk)
+
+## License
+
+No license has been specified yet.
