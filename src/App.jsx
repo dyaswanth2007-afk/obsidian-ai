@@ -2,7 +2,8 @@
 import { useEffect, useRef, useState } from "react";
 import "./App.css";
 
-const API = "http://localhost:5000";
+// Deployed Render backend
+const API = "https://obsidian-ai-nr1q.onrender.com";
 
 function App() {
   const [prompt, setPrompt] = useState("");
@@ -32,6 +33,39 @@ function App() {
     });
   }, [messages, loading]);
 
+  async function requestJson(url, options = {}) {
+    let response;
+
+    try {
+      response = await fetch(url, {
+        ...options,
+        cache: "no-store",
+      });
+    } catch {
+      throw new Error(
+        "Could not connect to the online backend. Please try again in a moment."
+      );
+    }
+
+    let data;
+
+    try {
+      data = await response.json();
+    } catch {
+      throw new Error(
+        "The backend returned an unexpected response. Please try again."
+      );
+    }
+
+    if (!response.ok) {
+      throw new Error(
+        data.error || `Request failed with status ${response.status}.`
+      );
+    }
+
+    return data;
+  }
+
   async function loadCode() {
     setActiveView("code");
     setCodeLoading(true);
@@ -39,15 +73,7 @@ function App() {
     setCopyMessage("");
 
     try {
-      const response = await fetch(`${API}/api/code`, {
-        cache: "no-store",
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Could not load website code.");
-      }
+      const data = await requestJson(`${API}/api/code`);
 
       setCodeFiles({
         html: data.html || "",
@@ -55,9 +81,7 @@ function App() {
         js: data.js || "",
       });
     } catch (err) {
-      setCodeError(
-        err.message || "Could not connect to the backend."
-      );
+      setCodeError(err.message || "Could not load website code.");
     } finally {
       setCodeLoading(false);
     }
@@ -65,6 +89,11 @@ function App() {
 
   async function copyCode() {
     const code = codeFiles[activeCodeTab];
+
+    if (!code) {
+      setCopyMessage("There is no code to copy yet.");
+      return;
+    }
 
     try {
       await navigator.clipboard.writeText(code);
@@ -87,14 +116,16 @@ function App() {
 
     setPrompt("");
     setError("");
+
     setMessages((previous) => [
       ...previous,
       { role: "user", text: request },
     ]);
+
     setLoading(true);
 
     try {
-      const response = await fetch(`${API}/api/chat`, {
+      await requestJson(`${API}/api/chat`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -102,16 +133,9 @@ function App() {
         body: JSON.stringify({ prompt: request }),
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Website generation failed.");
-      }
-
       setHasWebsite(true);
       setPreviewVersion(Date.now());
 
-      // Refresh the code automatically after each successful change.
       setCodeFiles({
         html: "",
         css: "",
@@ -130,7 +154,6 @@ function App() {
         },
       ]);
 
-      // Keep the current view if the user was viewing code.
       if (activeView === "code") {
         await loadCode();
       }
@@ -153,25 +176,25 @@ function App() {
   async function startNewWebsite() {
     if (loading) return;
 
+    setError("");
+
     try {
-      await fetch(`${API}/api/reset`, {
+      await requestJson(`${API}/api/reset`, {
         method: "POST",
       });
-    } catch {
-      setError("Could not contact the backend. Is it running?");
-      return;
-    }
 
-    setMessages([]);
-    setPrompt("");
-    setHasWebsite(false);
-    setPreviewVersion(0);
-    setError("");
-    setActiveView("preview");
-    setActiveCodeTab("html");
-    setCodeFiles({ html: "", css: "", js: "" });
-    setCodeError("");
-    setCopyMessage("");
+      setMessages([]);
+      setPrompt("");
+      setHasWebsite(false);
+      setPreviewVersion(0);
+      setActiveView("preview");
+      setActiveCodeTab("html");
+      setCodeFiles({ html: "", css: "", js: "" });
+      setCodeError("");
+      setCopyMessage("");
+    } catch (err) {
+      setError(err.message || "Could not reset the website.");
+    }
   }
 
   const previewUrl = hasWebsite
@@ -296,7 +319,9 @@ function App() {
                   <span className="message-author">Obsidian AI</span>
                   <p className="typing">
                     Working on your website
-                    <span>.</span><span>.</span><span>.</span>
+                    <span>.</span>
+                    <span>.</span>
+                    <span>.</span>
                   </p>
                 </div>
               </div>
@@ -306,7 +331,7 @@ function App() {
           </div>
 
           {error && (
-            <div className="error-box">
+            <div className="error-box" role="alert">
               <strong>Something went wrong</strong>
               <p>{error}</p>
             </div>
@@ -389,6 +414,7 @@ function App() {
                     title="Refresh preview"
                     onClick={() => {
                       setPreviewVersion(Date.now());
+
                       if (activeView === "code") {
                         loadCode();
                       }
@@ -510,6 +536,7 @@ function App() {
 
                   {codeError && (
                     <p
+                      role="alert"
                       style={{
                         margin: "16px",
                         color: "#ff9292",
@@ -536,8 +563,7 @@ function App() {
                         tabSize: 2,
                         whiteSpace: "pre",
                         color: "#e0d9f4",
-                        fontFamily:
-                          'Consolas, "Courier New", monospace',
+                        fontFamily: 'Consolas, "Courier New", monospace',
                       }}
                     >
                       <code>
