@@ -457,6 +457,7 @@ function App() {
                   src={previewUrl}
                   title="Generated website"
                   className="website-frame"
+                  sandbox="allow-scripts allow-forms"
                 />
               ) : (
                 <div
